@@ -12,6 +12,7 @@ type Repository interface {
 	GetAll() ([]User, error)
 	Get(id string) (*User, error)
 	Delete(id string) error
+	Update(id string, firstName *string, lastName *string, email *string, phone *string) error
 }
 
 type repo struct {
@@ -67,5 +68,31 @@ func (repo *repo) Delete(id string) error {
 		return err
 	}
 	repo.log.Println("user deleted with id ", user.ID)
+	return nil
+}
+
+func (repo *repo) Update(id string, firstName *string, lastName *string, email *string, phone *string) error {
+	values := make(map[string]interface{})
+
+	if firstName != nil {
+		values["first_name"] = firstName
+	}
+
+	if lastName != nil {
+		values["last_name"] = lastName
+	}
+
+	if email != nil {
+		values["email"] = email
+	}
+
+	if phone != nil {
+		values["phone"] = phone
+	}
+
+	if err := repo.db.Model(&User{}).Where("id", id).Updates(values).Error; err != nil {
+		repo.log.Println(err)
+		return err
+	}
 	return nil
 }
