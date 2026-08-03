@@ -1,37 +1,26 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/iGuessImaDev/gocourse_web/internal/user"
+	"github.com/iGuessImaDev/gocourse_web/pkg/bootstrap"
 	"github.com/joho/godotenv"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func main() {
 
 	router := mux.NewRouter()
 	_ = godotenv.Load()
-	l := log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
+	l := bootstrap.InitLogger()
 
-	dsn := fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local",
-		os.Getenv("DATABASE_USER"),
-		os.Getenv("DATABASE_PASSWORD"),
-		os.Getenv("DATABASE_HOST"),
-		os.Getenv("DATABASE_PORT"),
-		os.Getenv("DATABASE_NAME"))
-
-	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-
-	db = db.Debug()
-
-	_ = db.AutoMigrate(&user.User{})
+	db, err := bootstrap.DBConnection()
+	if err != nil {
+		l.Fatal(err)
+	}
 
 	userRepo := user.NewRepo(l, db)
 	userSrv := user.NewService(l, userRepo)
@@ -50,8 +39,5 @@ func main() {
 		ReadTimeout:  5 * time.Second,
 	}
 
-	err := srv.ListenAndServe()
-	if err != nil {
-		log.Fatal(err)
-	}
+	log.Fatal(srv.ListenAndServe())
 }
