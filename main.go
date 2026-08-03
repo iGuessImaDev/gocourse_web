@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/iGuessImaDev/gocourse_web/internal/course"
 	"github.com/iGuessImaDev/gocourse_web/internal/user"
 	"github.com/iGuessImaDev/gocourse_web/pkg/bootstrap"
 	"github.com/joho/godotenv"
@@ -26,11 +27,17 @@ func main() {
 	userSrv := user.NewService(l, userRepo)
 	userEnd := user.MakeEndpoints(userSrv)
 
+	courseRepo := course.NewRepo(db, l)
+	courseSrv := course.NewService(l, courseRepo)
+	courseEnd := course.MakeEndpoints(courseSrv)
+
 	router.HandleFunc("/users", userEnd.Create).Methods("POST")
 	router.HandleFunc("/users/{id}", userEnd.Get).Methods("GET")
 	router.HandleFunc("/users", userEnd.GetAll).Methods("GET")
 	router.HandleFunc("/users/{id}", userEnd.Update).Methods("PATCH")
 	router.HandleFunc("/users/{id}", userEnd.Delete).Methods("DELETE")
+
+	router.HandleFunc("/courses", courseEnd.Create).Methods("POST")
 
 	srv := &http.Server{
 		Handler:      router,

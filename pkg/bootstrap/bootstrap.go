@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/iGuessImaDev/gocourse_web/internal/course"
 	"github.com/iGuessImaDev/gocourse_web/internal/user"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -29,6 +30,9 @@ func DBConnection() (*gorm.DB, error) {
 
 	if os.Getenv("DATABASE_MIGRATE") == "true" {
 		if err := db.AutoMigrate(&user.User{}); err != nil {
+			return nil, err
+		}
+		if err := db.AutoMigrate(&course.Course{}); err != nil {
 			return nil, err
 		}
 	}
