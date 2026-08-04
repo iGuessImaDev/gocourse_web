@@ -3,7 +3,9 @@ package course
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/iGuessImaDev/gocourse_web/pkg/meta"
 )
 
@@ -12,12 +14,22 @@ type (
 
 	Endpoints struct {
 		Create Controller
+		GetAll Controller
+		Get    Controller
+		Update Controller
+		Delete Controller
 	}
 
 	CreateReq struct {
 		Name      string `json:"name" gorm:"type:char(50);not null"`
 		StartDate string `json:"start_date"`
 		EndDate   string `json:"end_date"`
+	}
+
+	UpdateReq struct {
+		Name      *string `json:"name"`
+		StartDate *string `json:"start_date"`
+		EndDate   *string `json:"end_date"`
 	}
 
 	Response struct {
@@ -31,6 +43,10 @@ type (
 func MakeEndpoints(s Service) Endpoints {
 	return Endpoints{
 		Create: makeCreateEndpoint(s),
+		GetAll: makeGetAllEndpoint(s),
+		Get:    makeGetEndpoint(s),
+		Update: makeUpdateEndpoint(s),
+		Delete: makeDeleteEndpoint(s),
 	}
 }
 
@@ -69,5 +85,116 @@ func makeCreateEndpoint(s Service) Controller {
 		}
 
 		json.NewEncoder(w).Encode(&Response{Status: 200, Data: course})
+	}
+}
+
+func makeGetAllEndpoint(s Service) Controller {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		v := r.URL.Query()
+
+		filters := Filters{
+			Name:      v.Get("name"),
+			StartDate: v.Get("start_date"),
+			EndDate:   v.Get("end_date"),
+		}
+
+		limit, _ := strconv.Atoi(v.Get("limit"))
+		page, _ := strconv.Atoi(v.Get("page"))
+
+		count, err := s.Count(filters)
+		if err != nil {
+			w.WriteHeader(500)
+			json.NewEncoder(w).Encode(&Response{Status: 500, Err: err.Error()})
+			return
+		}
+
+		meta, err := meta.New(page, limit, count)
+		if err != nil {
+			w.WriteHeader(500)
+			json.NewEncoder(w).Encode(&Response{Status: 500, Err: err.Error()})
+			return
+		}
+
+		courses, err := s.GetAll(filters, meta.Offset(), meta.Limit())
+		if err != nil {
+			w.WriteHeader(400)
+			json.NewEncoder(w).Encode(&Response{Status: 400, Err: err.Error()})
+			return
+		}
+
+		json.NewEncoder(w).Encode(&Response{Status: 200, Data: courses, Meta: meta})
+	}
+}
+
+func makeGetEndpoint(s Service) Controller {
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := mux.Vars(r)
+		id := path["id"]
+		course, err := s.Get(id)
+
+		if err != nil {
+			w.WriteHeader(404)
+			json.NewEncoder(w).Encode(&Response{Status: 404, Err: "course doesn't exist"})
+			return
+		}
+
+		json.NewEncoder(w).Encode(&Response{Status: 200, Data: course})
+	}
+}
+
+func makeUpdateEndpoint(s Service) Controller {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req UpdateReq
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(400)
+			json.NewEncoder(w).Encode(&Response{Status: 400, Err: "invalid request format"})
+			return
+		}
+
+		if req.Name != nil && *req.Name == "" {
+			w.WriteHeader(400)
+			json.NewEncoder(w).Encode(&Response{Status: 400, Err: "name is required"})
+			return
+		}
+
+		if req.StartDate != nil && *req.StartDate == "" {
+			w.WriteHeader(400)
+			json.NewEncoder(w).Encode(&Response{Status: 400, Err: "start date is required"})
+			return
+		}
+
+		if req.EndDate != nil && *req.EndDate == "" {
+			w.WriteHeader(400)
+			json.NewEncoder(w).Encode(&Response{Status: 400, Err: "end date is required"})
+			return
+		}
+
+		path := mux.Vars(r)
+		id := path["id"]
+
+		if err := s.Update(id, req.Name, req.StartDate, req.EndDate); err != nil {
+			w.WriteHeader(404)
+			json.NewEncoder(w).Encode(&Response{Status: 404, Err: "course doesn't exist"})
+			return
+		}
+
+		json.NewEncoder(w).Encode(&Response{Status: 200, Data: "success"})
+	}
+}
+
+func makeDeleteEndpoint(s Service) Controller {
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := mux.Vars(r)
+		id := path["id"]
+		err := s.Delete(id)
+
+		if err != nil {
+			w.WriteHeader(404)
+			json.NewEncoder(w).Encode(&Response{Status: 404, Err: "course doesn't exist"})
+			return
+		}
+		json.NewEncoder(w).Encode(&Response{Status: 200, Data: "success"})
 	}
 }
