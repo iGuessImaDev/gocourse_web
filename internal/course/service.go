@@ -90,8 +90,27 @@ func (s service) Delete(id string) error {
 	return nil
 }
 
-func (s service) Update(id string, name *string, startDate *string, endDate *string) error {
-	return s.repo.Update(id, name, startDate, endDate)
+func (s service) Update(id string, name, startDate, endDate *string) error {
+	var startDateParsed, endDateParsed *time.Time
+
+	if startDate != nil {
+		date, err := time.Parse("2006-01-01", *startDate)
+		if err != nil {
+			s.log.Println(err)
+			return err
+		}
+		startDateParsed = &date
+	}
+
+	if endDate != nil {
+		date, err := time.Parse("2006-01-01", *endDate)
+		if err != nil {
+			s.log.Println(err)
+			return err
+		}
+		endDateParsed = &date
+	}
+	return s.repo.Update(id, name, startDateParsed, endDateParsed)
 }
 
 func (s service) Count(filters Filters) (int, error) {

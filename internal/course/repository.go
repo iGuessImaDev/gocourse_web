@@ -14,7 +14,7 @@ type (
 		Create(course *Course) error
 		GetAll(filters Filters, offset, limit int) ([]Course, error)
 		Get(id string) (*Course, error)
-		Update(id string, name *string, startDate *string, endDate *string) error
+		Update(id string, name *string, startDate, endDate *time.Time) error
 		Delete(id string) error
 		Count(filters Filters) (int, error)
 	}
@@ -78,7 +78,7 @@ func (repo *repo) Delete(id string) error {
 	return nil
 }
 
-func (repo *repo) Update(id string, name *string, startDate *string, endDate *string) error {
+func (repo *repo) Update(id string, name *string, startDate, endDate *time.Time) error {
 	values := make(map[string]interface{})
 
 	if name != nil {
@@ -86,11 +86,11 @@ func (repo *repo) Update(id string, name *string, startDate *string, endDate *st
 	}
 
 	if startDate != nil {
-		values["start_date"] = startDate
+		values["start_date"] = *startDate
 	}
 
 	if endDate != nil {
-		values["end_date"] = endDate
+		values["end_date"] = *endDate
 	}
 
 	if err := repo.db.Model(&Course{}).Where("id", id).Updates(values).Error; err != nil {
